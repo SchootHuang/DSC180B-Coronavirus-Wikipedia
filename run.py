@@ -5,9 +5,11 @@ import json
 
 sys.path.insert(0, 'src') # add library code to path
 from src.etl import get_data, process_data, extract_articles, remove_dir
+from src.media_etl import get_media_data, process_media_data
 from src.m_stat import get_m_stat_data, grab_m_stat_over_time
 
 DATA_PARAMS = 'config/data-params.json'
+MEDIA_DATA_PARAMS  = 'config/media-data-params.json'
 PROCESS_PARAMS = 'config/process-params.json'
 M_STAT_PARAMS = 'config/m-stat-params.json'
 EXTRACT_PARAMS = 'config/extract-params.json'
@@ -47,6 +49,10 @@ def main(targets):
         cfg = load_params(DATA_PARAMS)
         get_data(**cfg)
 
+    if 'media-data' in targets:
+        cfg = load_params(MEDIA_DATA_PARAMS)
+        get_media_data(**cfg)
+            
     # make the test data target
     if 'test-data' in targets:
         cfg = load_params(TEST_DATA_PARAMS)
