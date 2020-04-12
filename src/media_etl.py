@@ -1,5 +1,6 @@
 import pandas as pd
 import zipfile
+import os
 
 def get_media_data(**cfg):
     for url in cfg['URLs']:
@@ -12,4 +13,19 @@ def get_media_data(**cfg):
         zip_ref.extractall(infile)
         
 def process_media_data(**cfg):
-    pass
+    result = []
+    for chunk in pd.read_csv('all-the-news-2-1.csv',usecols=range(2,12),
+                         parse_dates=['date'], chunksize=chunksize):
+        result.append(chunk[chunk.year==2020])
+    all2020 = pd.concat(result)
+    
+    COVID = all2020[
+        (all2020.title.str.contains('virus'))|
+        (all2020.title.str.contains('COVID'))|
+        (all2020.title.str.contains('stay-at-home'))|
+        (all2020.title.str.contains('COVID-19'))|
+    #    (all2020.title.str.contains('toll'))|
+        (all2020.title.str.contains('coronavirus'))
+    ].reset_index(drop=True)
+
+    COVID.to_csv('all-the-news-2020-COVID-title.csv')
