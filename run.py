@@ -10,6 +10,8 @@ from src.m_stat import get_m_stat_data, grab_m_stat_over_time
 
 DATA_PARAMS = 'config/data-params.json'
 MEDIA_DATA_PARAMS  = 'config/media-data-params.json'
+MEDIA_PROCESS_PARAMS  = 'config/media-process-params.json'
+
 PROCESS_PARAMS = 'config/process-params.json'
 M_STAT_PARAMS = 'config/m-stat-params.json'
 EXTRACT_PARAMS = 'config/extract-params.json'
@@ -49,10 +51,16 @@ def main(targets):
         cfg = load_params(DATA_PARAMS)
         get_data(**cfg)
 
+    # make the media data target
     if 'media-data' in targets:
         cfg = load_params(MEDIA_DATA_PARAMS)
         get_media_data(**cfg)
             
+   # cleans and prepares the media data for analysis
+    if 'process-media' in targets:
+        cfg = load_params(PROCESS_MEDIA_PARAMS)
+        process_media_data(**cfg)
+        
     # make the test data target
     if 'test-data' in targets:
         cfg = load_params(TEST_DATA_PARAMS)
