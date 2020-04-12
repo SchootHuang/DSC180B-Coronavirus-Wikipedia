@@ -14,7 +14,7 @@ def get_media_data(**cfg):
         
 def process_media_data(**cfg):
     result = []
-    for chunk in pd.read_csv('all-the-news-2-1.csv',usecols=range(2,12),
+    for chunk in pd.read_csv(cfg['infile'],usecols=range(2,12),
                          parse_dates=['date'], chunksize=chunksize):
         result.append(chunk[chunk.year==2020])
     all2020 = pd.concat(result)
@@ -28,4 +28,4 @@ def process_media_data(**cfg):
         (all2020.title.str.contains('coronavirus'))
     ].reset_index(drop=True)
 
-    COVID.to_csv('all-the-news-2020-COVID-title.csv')
+    COVID.to_csv(cfg['outfile'])
