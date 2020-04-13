@@ -55,11 +55,17 @@ def context_to_pkl(context, out_spec_dir, tags, article_set):
     :param article_set: Set of article titles
     """
 
+    root = etree.Element("wikimedia")
+
     # loop through the large XML tree (streaming)
     for event, elem in context:
         curr_title = get_tag_if_exists(elem, 'page_title')
         if curr_title in article_set:
-            pkl_tree(root=elem, out_spec_dir=out_spec_dir, tags=tags)
+            # add the 'page' element to the small tree
+            root.append(elem)
+            pkl_tree(root=root, out_spec_dir=out_spec_dir, tags=tags,
+                     page_title=curr_title)
+            root = etree.Element("wikimedia")
 
         # release unneeded XML from memory
         elem.clear()
@@ -69,20 +75,19 @@ def context_to_pkl(context, out_spec_dir, tags, article_set):
     del context
 
 
-def pkl_tree(root, out_spec_dir, tags):
+def pkl_tree(root, out_spec_dir, tags, page_title):
     """
     Pickles tree to csv file
     :param root: Root node of tree
-    :param out_dir: Data directory for output
+    :param out_spec_dir: Data directory for output
     :param tags: Tags used for output
     :return:
     """
-    curr_title = get_tag_if_exists(root, 'page_title')
-    print('Beginning conversion of {}'.format(curr_title))
+    print('Beginning conversion of {}'.format(page_title))
 
     df = convert_tree_to_df(root=root, tags=tags)
-    print('Converted to {}'.format(curr_title))
-    save_pkl(df, '{}{}.pkl'.format(out_spec_dir, curr_title))
+    print('Converted to {}'.format(page_title))
+    save_pkl('{}{}.pkl'.format(out_spec_dir, page_title), df)
     del root, df
 
 
@@ -113,6 +118,9 @@ def convert_tree_to_df(root, tags):
     curr_page_level_tags = list(tags.intersection(page_level_tags))
     curr_rev_level_tags = list(tags.intersection(rev_level_tags))
     curr_contr_level_tags = list(tags.intersection(contr_level_tags))
+    if 'user' in tags:
+        curr_contr_level_tags.append('user_ip')
+        curr_contr_level_tags.append('username')
     curr_tags = [curr_page_level_tags, curr_rev_level_tags,
                  curr_contr_level_tags]
     # Column order for output
@@ -134,7 +142,8 @@ def convert_tree_to_df(root, tags):
             # Gets all contributor level tags
             for contr_tag in curr_tags[2]:
                 curr_row[contr_tag] = get_tag_if_exists(contr_el, contr_tag)
-            df_lists.append(list(curr_row.values()))
+            df_lists.append([curr_row[tag] for tag_level in curr_tags
+                             for tag in tag_level])
     df = pd.DataFrame(df_lists, columns=cols)
     del df_lists
     if 'timestamp' in cols:
@@ -415,7 +424,7 @@ def extract_data(
         ),
         file_type='edit-history', domain_list=('en', 'en.m'),
         delete_unzipped=0, delete_zipped=0,
-        tags=('page_title', 'timestamp', 'username', 'user_ip', 'edit'),
+        tags=('page_title', 'timestamp', 'user', 'edit'),
 ):
     """
     Processes the XML file into more readable formats
