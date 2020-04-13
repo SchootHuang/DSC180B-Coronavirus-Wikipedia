@@ -1,9 +1,9 @@
 from keras.utils import get_file
 from zipfile import ZipFile, BadZipfile
 from lxml import etree
-from copy import deepcopy
 from py7zr import unpack_7zarchive
 from bs4 import BeautifulSoup
+import dill as pickle
 import wikipediaapi
 import shutil
 import os
@@ -45,92 +45,45 @@ nsmap = {'ns': 'http://www.mediawiki.org/xml/export-0.10/'}
 # ---------------------------------------------------------------------
 # Helper Functions for Getting Data
 # ---------------------------------------------------------------------
-
-def context_to_txt(context, fp_output, out_dir, tags, out_format,
-                   article_set, page_chunk=1):
+def context_to_pkl(context, out_spec_dir, tags, article_set):
     """
     Converts the XML Tree context to some text format
     Either csv or light format
     :param context: XML iterable context for streaming
-    :param fp_output: File path for output
     :param out_dir: Output directory
     :param tags: Tags used for csv format
-    :param out_format: Format flag (0 for light_format, otherwise csv)
     :param article_set: Set of article titles
-    :param page_chunk: Number of pages per chunk
     """
-
-    if out_format == 0:
-        light_format = True
-    else:
-        light_format = False
-
-    # create an empty tree to add XML elements to ('pages')
-    tree = etree.ElementTree()
-    root = etree.Element("wikimedia")
-
-    page_num = 1
 
     # loop through the large XML tree (streaming)
     for event, elem in context:
-        # After a given number of pages, write the tree to the XML file
-        # and reset the tree / create a new file.
-        if page_num % page_chunk == 0:
-            tree, root = write_tree_to_txt(
-                tree=tree, root=root, page_num=page_num, fp_output=fp_output,
-                out_dir=out_dir, tags=tags, light_format=light_format
-            )
         curr_title = get_tag_if_exists(elem, 'page_title')
         if curr_title in article_set:
-            # add the 'page' element to the small tree
-            root.append(deepcopy(elem))
-            page_num += 1
+            pkl_tree(root=elem, out_spec_dir=out_spec_dir, tags=tags)
 
         # release unneeded XML from memory
         elem.clear()
         while elem.getprevious() is not None:
             del elem.getparent()[0]
 
-    # Edge case for extra pages in memory
-    if page_num % page_chunk:
-        write_tree_to_txt(
-                tree=tree, root=root, page_num=page_num, fp_output=fp_output,
-                out_dir=out_dir, tags=tags, light_format=light_format
-                )
     del context
 
 
-def write_tree_to_txt(tree, root, page_num, fp_output, out_dir, tags,
-                      light_format=True):
+def pkl_tree(root, out_spec_dir, tags):
     """
-    Writes tree to csv file
-    :param tree: Etree
+    Pickles tree to csv file
     :param root: Root node of tree
-    :param page_num: Last page encoded within the tree
-    :param fp_output: File path of the output file
     :param out_dir: Data directory for output
     :param tags: Tags used for output
-    :param light_format: Whether or not to output light format
     :return:
     """
-    print('Begin conversion just up to {}'.format(page_num))
-    # If desired output is in light dump format
-    if light_format:
-        convert_tree_light_format(root=root, out_dir=out_dir,
-                                  fp_output=fp_output)
-        print('converted up to {}'.format(page_num))
-        return etree.ElementTree(), etree.Element("wikimedia")
+    curr_title = get_tag_if_exists(root, 'page_title')
+    print('Beginning conversion of {}'.format(curr_title))
 
     df = convert_tree_to_df(root=root, tags=tags)
-    print('converted up to {}'.format(page_num))
-    if not os.path.exists(out_dir + fp_output):
-        df.to_csv(out_dir + fp_output, index=False)
-        print('converted up to {} to csv'.format(page_num))
-    else:
-        df.to_csv(out_dir + fp_output, mode='a', index=False, header=False)
-        print('appended up to {} to csv'.format(page_num))
-    del tree, root, df
-    return etree.ElementTree(), etree.Element("wikimedia")
+    print('Converted to {}'.format(curr_title))
+    save_pkl(df, '{}{}.pkl'.format(out_spec_dir, curr_title))
+    del root, df
 
 
 def get_tag_if_exists(parent, tag):
@@ -147,78 +100,6 @@ def get_tag_if_exists(parent, tag):
     except:
         # When tag is not child of parent and res = None
         return res
-
-
-def convert_tree_light_format(root, out_dir, fp_output):
-    """
-    Converts from the XML tree to light formatted data
-    Example formatting:
-        Anarchism
-        ^^^_2019-05-17T01:24:12Z 0 493 JJMC89
-
-        [Page title]
-        ^^^[datetime] [flag for revert] [edit number] [editor name/IP address]
-    :param root: Root of tree
-    :param out_dir: Output directory
-    :param fp_output: Filepath for output
-    """
-    # File Handle
-    fh = open(out_dir + fp_output, 'a')
-    # Only necessary columns
-    cols = ['timestamp', 'edit', 'username']
-
-    # Iterates through every page under the current root
-    for page_el in root.iterfind(xpath_dict['page'], namespaces=nsmap):
-        page_title = get_tag_if_exists(page_el, 'page_title')
-        fh.write(page_title + '\n')
-
-        # Keeps of edits by their time
-        # Tragically ugly but necessary because raw dumps are not in
-        # chronological order
-        time_mapper = {}
-        for rev_el in page_el.iterfind(xpath_dict['revision'],
-                                       namespaces=nsmap):
-            # Grabs necessary information: time, edit text, username/ip
-            timestamp = get_tag_if_exists(rev_el, cols[0])
-            curr_rev = get_tag_if_exists(rev_el, cols[1])
-            contr_el = rev_el.find(xpath_dict['contributor'], namespaces=nsmap)
-            user = get_tag_if_exists(contr_el, cols[2])
-            if not user:
-                user = get_tag_if_exists(contr_el, 'user_ip')
-            if user:
-                # Any spaces in usernames are replaced with underscores
-                user = user.replace(' ', '_')
-            curr_line = (curr_rev, user)
-            # Maps every time to the (edit, username/IP address)
-            time_mapper[timestamp] = curr_line
-
-        # Rev_mapper keeps track of each revision's text because that's
-        # how each revert is tracked
-        # (WHICH IS SUPER FUCKING SPACE INEFFICIENT. BUT IDK, DOES ANYONE HAVE
-        # A BETTER FUCKING IDEA. FUCKING CS NIGHTMARE HERE. WIKIMEDIA NEEDS TO
-        # FIX THIS SHIT)
-        rev_mapper, rev_count, lines =\
-            {}, 1, []
-        # Iterates across each edit in chronological order
-        for time in sorted(time_mapper.keys()):
-            curr_rev, user = time_mapper[time][0], time_mapper[time][1]
-            timestamp = '^^^_' + time
-            # Checks if edit was seen before and thus it was a revert
-            if curr_rev not in rev_mapper:
-                # Adds new edit to dictionary that maps each edit's text
-                # to their revision ID number
-                rev_mapper[curr_rev] = rev_count
-                rev_count += 1
-                revert_flag = 0
-            else:
-                revert_flag = 1
-            curr_rev = rev_mapper[curr_rev]
-            curr_line = '{} {} {} {}\n'.format(timestamp, revert_flag,
-                                               curr_rev, user)
-            lines.append(curr_line)
-        # Reverses for descending order
-        fh.writelines(lines[::-1])
-        del lines
 
 
 def convert_tree_to_df(root, tags):
@@ -295,30 +176,30 @@ def unpack_zip(raw_dir, temp_dir, fp_zip):
     fp_unzip = max([temp_dir + file for file in os.listdir(temp_dir)],
                    key = os.path.getctime)
 
-    print('Unzipped file path:', temp_dir + fp_unzip)
-    return fp_unzip
+    print('Unzipped file path:', fp_unzip)
+    return fp_unzip[len(temp_dir):]
 
 
-def unzip_to_txt(data_dir, fp_unzip, fp_output, tags, out_format,
-                 article_set):
+def unzip_to_pkl(data_dir, fp_unzip, tags, article_set, file_type):
     """
     Unzips file to desired output format
     Currently supports only csv or light dump format
     :param data_dir: Directory for all data
     :param fp_unzip: File path of unzipped file
     :param tags: Desired tags for csv format
-    :param out_format: Output format (0 for light dump, otherwise csv)
+    :param article_set: Set of article titles
+    :param file_type: Either pageview or edit-history
     """
     temp_dir = '{}temp/'.format(data_dir)
-    out_dir = '{}out/'.format(data_dir)
+    out_spec_dir = '{}out/{}/'.format(data_dir, file_type)
 
     context = etree.iterparse(temp_dir + fp_unzip,
                               tag='{http://www.mediawiki.org/' +\
                                   'xml/export-0.10/}page',
                               encoding='utf-8', huge_tree=True)
-    print('Converting to output')
-    context_to_txt(context=context, fp_output=fp_output, out_dir=out_dir,
-                   tags=tags, out_format=out_format, article_set=article_set)
+    print('Converting to pickle')
+    context_to_pkl(context=context, out_spec_dir=out_spec_dir, tags=tags,
+                   article_set=article_set)
 
     # Delete etree
     del context
@@ -347,10 +228,12 @@ def scrape_files(base_url, scrape_file_desc, scrape_file_ext, raw_dir,
                   and scrape_file_ext == a['href'][-3:]]
     fp_unzips = []
     for dump in file_dumps:
-        print('Starting with dump:', dump)
+        print('Starting with dump:', dump.text)
         fp_zip = get_file(dump.text, base_url + dump.text,
-                           cache_dir='.', cache_subdir=raw_dir)
-        if skip_unzip == 2:
+                          cache_dir='.', cache_subdir=raw_dir)
+        print('Done with dump:', dump.text)
+
+        if skip_unzip != 2:
             print('Now unpacking/unzipping dump.')
             fp_unzip = unpack_zip(raw_dir=raw_dir, temp_dir=temp_dir,
                                 fp_zip=fp_zip)
@@ -360,7 +243,7 @@ def scrape_files(base_url, scrape_file_desc, scrape_file_ext, raw_dir,
 
 
 def get_categorymembers(categorymembers, out_fh, article_set,
-                          level=0, max_level=1000):
+                        level=0, max_level=1000):
     """
     Gets all the articles in a Wikipedia category
     :param categorymembers: Wikipedia category members
@@ -371,18 +254,21 @@ def get_categorymembers(categorymembers, out_fh, article_set,
     :return:
     """
     for c in categorymembers.values():
-        # Stores article title
-        if c.ns == wikipediaapi.Namespace.MAIN:
-            curr_title = c.title.replace(" ", "_")
-            if curr_title not in article_set:
+        # print("%s: %s (ns: %d)" % ("*" * (level + 1), c.title, c.ns))
+        curr_title = c.title.replace(" ", "_")
+        if curr_title not in article_set:
+            article_set.add(curr_title)
+            # Stores article title
+            if c.ns == wikipediaapi.Namespace.MAIN:
                 out_fh.write("%s\n" % curr_title)
-                article_set.add(curr_title)
-        # Recursively gets the pages under a category
-        if c.ns == wikipediaapi.Namespace.CATEGORY and level < max_level:
-            get_categorymembers(c.categorymembers, out_fh, article_set,
-                                level=level + 1, max_level=max_level)
+            # Recursively gets the pages under a category
+            if c.ns == wikipediaapi.Namespace.CATEGORY and level < max_level:
+                get_categorymembers(c.categorymembers, out_fh, article_set,
+                                    level=level + 1, max_level=max_level)
 
-def get_pageview_articles(fp_zip, domain_set, article_set):
+
+def get_pageview_articles(raw_dir, out_spec_dir, fp_zip, domain_set,
+                          article_set):
     """
     Extracts all the desired articles from a pageviews zip file
     :param fp_zip: File path for zipped file
@@ -391,19 +277,18 @@ def get_pageview_articles(fp_zip, domain_set, article_set):
     :return:
     """
     fp_unzip = fp_zip.replace('.gz', '.csv')
-    fh_unzip = open(fp_unzip, 'w+')
+    fh_unzip = open(out_spec_dir + fp_unzip, 'w+')
     fh_unzip.write('Domain_Code,Title,Count_Pageviews\n')
     # Iterate through compressed file one line at a time
     for line in subprocess.Popen(['gunzip'],
-                                 stdin=open(fp_zip),
+                                 stdin=open(raw_dir + fp_zip),
                                  stdout=subprocess.PIPE).stdout:
         curr_arr = line.decode('UTF-8').split()
         curr_domain = curr_arr[0]
         curr_title = curr_arr[1]
         curr_views = curr_arr[2]
         if curr_domain in domain_set and curr_title in article_set:
-            print(curr_arr)
-            fh_unzip.write('%s,%s,%s\n'.format(curr_domain, curr_title,
+            fh_unzip.write('{},{},{}\n'.format(curr_domain, curr_title,
                                                curr_views))
 
 
@@ -425,6 +310,12 @@ def get_basic_data_dirs(data_dir='data/',
     for child_dir in child_dirs:
         if not os.path.exists(data_dir + child_dir):
             os.makedirs(data_dir + child_dir)
+
+
+def save_pkl(fp, obj):
+    """Saves an object to pickle file."""
+    with open(fp, "wb") as fh:
+        pickle.dump(obj, fh)
 
 
 # ---------------------------------------------------------------------
@@ -522,11 +413,9 @@ def extract_data(
         article_list_fps=(
                 '2019–20_coronavirus_pandemic_articles.csv',
         ),
-        file_type='edit history', domain_list=('en', 'en.m'),
-        delete_unzipped=1, delete_zipped=0,
-        tags=('page_title', 'rev_id', 'parent_id', 'username', 'user_ip'),
-        out_format=1,
-        edit_history_fp_output='2019–20_coronavirus_pandemic_edit_history.csv'
+        file_type='edit-history', domain_list=('en', 'en.m'),
+        delete_unzipped=0, delete_zipped=0,
+        tags=('page_title', 'timestamp', 'username', 'user_ip', 'edit'),
 ):
     """
     Processes the XML file into more readable formats
@@ -539,16 +428,26 @@ def extract_data(
     :param delete_unzipped: 1 to delete unzipped file, 0 to keep
     :param delete_zipped: 1 to delete zipped file, 0 to keep
     :param tags: Tags to keep for output
-    :param out_format: Output format, 0 for light dump format, otherwise csv
     """
+
+    if not isinstance(tags, set):
+        try:
+            tags = set(tags)
+        except TypeError:
+            print("Tags needs to be a iterable, like the default:" +
+                  "{'page_title', 'timestamp', 'username', 'user_ip'}." +
+                  "Try again")
 
     raw_dir = data_dir + 'raw/'
     temp_dir = data_dir + 'temp/'
     out_dir = data_dir + 'out/'
+    out_spec_dir = '{}{}/'.format(out_dir, file_type)
+    if not os.path.exists(out_spec_dir):
+        os.makedirs(out_spec_dir)
 
     article_set = set()
     for article_list_fp in article_list_fps:
-        curr_article_df = pd.read_csv(out_dir + article_list_fp)
+        curr_article_df = pd.read_csv(out_dir + article_list_fp, sep='\\')
         article_set = article_set.union(curr_article_df['Title'])
 
     domain_set = set(domain_list)
@@ -556,12 +455,23 @@ def extract_data(
         print('Starting with {}'.format(fp_zip))
         if file_type == 'edit-history':
             fp_unzip = unpack_zip(raw_dir=raw_dir, temp_dir=temp_dir,
-                                fp_zip=fp_zip)
-            unzip_to_txt(data_dir, fp_unzip, edit_history_fp_output, tags,
-                         out_format, article_set)
-        else:
-            get_pageview_articles(fp_zip=fp_zip, domain_set=domain_set,
+                                  fp_zip=fp_zip)
+            unzip_to_pkl(data_dir=data_dir, fp_unzip=fp_unzip, tags=tags,
+                         article_set=article_set, file_type=file_type)
+            if delete_unzipped:
+                os.remove(fp_unzip)
+        elif file_type == 'pageview':
+            get_pageview_articles(raw_dir=raw_dir,
+                                  out_spec_dir=out_spec_dir,
+                                  fp_zip=fp_zip,
+                                  domain_set=domain_set,
                                   article_set=article_set)
+        else:
+            print("Unknown file type. We only taking 'edit-history' or" +
+                  "'pageview'. Try again xd.")
+
+        if delete_zipped:
+            os.remove(fp_zip)
 
 
 # ---------------------------------------------------------------------
@@ -587,9 +497,10 @@ def get_wiki_category_articles(
         language=language,
         extract_format=wikipediaapi.ExtractFormat.WIKI
     )
-    cat_page = wiki_wiki.page(category)
+    cat_page = wiki_wiki.page('Category:' + category)
     out_fh = open(out_fp, 'w+')
     out_fh.write('Title\n')
     article_set = set()
-    get_categorymembers(cat_page.categorymembers, out_fh, article_set,
-                        max_level)
+    get_categorymembers(categorymembers=cat_page.categorymembers,
+                        out_fh=out_fh, article_set=article_set,
+                        level=0, max_level=max_level)
