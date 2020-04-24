@@ -1,8 +1,9 @@
 {
     "data_dir": "/datasets/dsc180a-wi20-public/Wiki/group_data/calvin_leena_scott_sksksksk/data/",
-    "fps": ["https://dumps.wikimedia.org/other/pageviews/2020/2020-04/"],
+    "fps": [],
     "fp_type": 2,
     "unzip_type": 2,
     "scrape_file_ext": ".gz",
-    "scrape_file_desc": "pageviews"
+    "scrape_file_desc": "pageviews",
+    "start_date": "2020-04-21"
 }

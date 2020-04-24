@@ -10,6 +10,8 @@ import os
 import pandas as pd
 import requests
 import subprocess
+from datetime import date
+import re
 
 # Paths are as follows
 # i.e. Page: page_id, page_title
@@ -40,6 +42,9 @@ rev_level_tags = {'rev_id', 'parent_id', 'timestamp', 'comment', 'model',
 contr_level_tags = {'username', 'user_id', 'user_ip'}
 
 nsmap = {'ns': 'http://www.mediawiki.org/xml/export-0.10/'}
+
+PAGEVIEWS_BASE_URL = 'https://dumps.wikimedia.org/other/pageviews/'
+EDIT_HISTORY_BASE_URL = 'https://dumps.wikimedia.org/enwiki/20200401/'
 
 
 # ---------------------------------------------------------------------
@@ -214,9 +219,8 @@ def unzip_to_pkl(data_dir, fp_unzip, tags, article_set, file_type):
     del context
     print('Done with ' + temp_dir + fp_unzip)
 
-
 def scrape_files(base_url, scrape_file_desc, scrape_file_ext, raw_dir,
-                 temp_dir, skip_unzip):
+                 temp_dir, skip_unzip, start_date=None):
     """
     Scrapes files from a base url with a specific file extension and file path
     :param base_url: Base URL where files lie in
@@ -236,7 +240,22 @@ def scrape_files(base_url, scrape_file_desc, scrape_file_ext, raw_dir,
                   and scrape_file_desc in a['href']
                   and scrape_file_ext == a['href'][-3:]]
     fp_unzips = []
+
+    if start_date:
+        start_year, start_month, start_day = start_date.split('-')
+        start_year = int(start_year)
+        start_month = int(start_month)
+        start_day = int(start_day)
+
     for dump in file_dumps:
+        if start_date:
+            curr_date = dump.text.split('-')[1]
+            curr_year = int(curr_date[:4])
+            curr_month = int(curr_date[4:6])
+            curr_day = int(curr_date[6:])
+            if start_year == curr_year and start_month == curr_month and\
+                curr_day < start_day:
+                continue
         print('Starting with dump:', dump.text)
         fp_zip = get_file(dump.text, base_url + dump.text,
                           cache_dir='.', cache_subdir=raw_dir)
@@ -340,7 +359,8 @@ def get_data(
             'enwiki-20200101-pages-meta-history1.xml-p1037p2031.7z'
         ),
         fp_type=0, unzip_type=0, scrape_file_ext='.7z',
-        scrape_file_desc='pages-meta-history'
+        scrape_file_desc='pages-meta-history',
+        start_date=None
 ):
     """
     Gets the data from either a url or some file destination and unzips
@@ -359,6 +379,10 @@ def get_data(
     :return: None
     """
 
+    if start_date and not re.compile('\d{4}-\d{2}-\d{2}').match(start_date):
+        print('Start date should be in the format YYYY-MM-DD')
+        return
+
     child_dirs = ['', 'out/', 'temp/', 'raw/']
     get_basic_data_dirs(data_dir, child_dirs)
     raw_dir = data_dir + 'raw/'
@@ -366,6 +390,17 @@ def get_data(
     out_dir = data_dir + 'out/'
 
     print('Directories are made/were made')
+
+    if fp_type == 2:
+        if scrape_file_desc == 'pageviews':
+            start_year, start_month, _ = start_date.split('-')
+            today = date.today()
+            fps.extend(['{}{:04d}/{:04d}-{:02d}/'.format(PAGEVIEWS_BASE_URL,
+                curr_year, curr_year, curr_month)
+                for curr_year in range(int(start_year), today.year + 1)
+                for curr_month in range(int(start_month), today.month + 1)])
+        elif scrape_file_desc == 'pages-meta-history':
+            fps.append(EDIT_HISTORY_BASE_URL)
 
     fp_unzips = []
     for curr_fp in fps:
@@ -391,7 +426,7 @@ def get_data(
         elif fp_type == 2:
             fp_unzips.extend(
                 scrape_files(curr_fp, scrape_file_desc, scrape_file_ext,
-                             raw_dir, temp_dir, unzip_type))
+                             raw_dir, temp_dir, unzip_type, start_date))
             continue
         print('Now unpacking/unzipping zip.')
         # Directs unzip file to desired sub-directory
@@ -409,7 +444,6 @@ def get_data(
     print('Done. The unzipped files are:', fp_unzips)
     return
 
-
 # ---------------------------------------------------------------------
 # Driver Function for EXTRACTING DESIRED ARTICLES
 # ---------------------------------------------------------------------
@@ -419,6 +453,7 @@ def extract_data(
         fps=(
             'enwiki-20200401-pages-meta-history1.xml-p1p908.7z',
         ),
+        fp_header="enwiki-", search_by_header=0,
         article_list_fps=(
                 '2019–20_coronavirus_pandemic_articles.csv',
         ),
@@ -459,6 +494,18 @@ def extract_data(
         curr_article_df = pd.read_csv(out_dir + article_list_fp, sep='\\')
         article_set = article_set.union(curr_article_df['Title'])
 
+    def order_by_page_range(curr_fp_elem):
+        return int(curr_fp_elem.split('.')[-2].split('p')[-1])
+
+    if search_by_header:
+        if file_type == 'edit-history':
+            fps.extend(sorted([curr_fp for curr_fp in os.listdir(raw_dir)
+                if curr_fp.startswith(fp_header)],
+                key=order_by_page_range, reverse=True))
+        else:
+            fps.extend(sorted([curr_fp for curr_fp in os.listdir(raw_dir)
+                if curr_fp.startswith(fp_header)]))
+
     domain_set = set(domain_list)
     for fp_zip in fps:
         print('Starting with {}'.format(fp_zip))
@@ -468,7 +515,7 @@ def extract_data(
             unzip_to_pkl(data_dir=data_dir, fp_unzip=fp_unzip, tags=tags,
                          article_set=article_set, file_type=file_type)
             if delete_unzipped:
-                os.remove(fp_unzip)
+                os.remove(temp_dir + fp_unzip)
         elif file_type == 'pageview':
             get_pageview_articles(raw_dir=raw_dir,
                                   out_spec_dir=out_spec_dir,
@@ -480,7 +527,7 @@ def extract_data(
                   "'pageview'. Try again xd.")
 
         if delete_zipped:
-            os.remove(fp_zip)
+            os.remove(raw_dir + fp_zip)
 
 
 # ---------------------------------------------------------------------
