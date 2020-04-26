@@ -2,10 +2,11 @@
 
 import sys
 import json
+import os
 
 sys.path.insert(0, 'src') # add library code to path
 from src.etl import get_data, extract_data, get_wiki_category_articles,\
-        remove_dir
+        remove_dir, sub_extra_commas
 from src.media_etl import get_media_data, process_media_data
 
 EDIT_HISTORY_DATA_PARAMS = 'config/edit-history-data-params.json'
@@ -15,8 +16,6 @@ PAGEVIEWS_EXTRACT_PARAMS = 'config/pageviews-extract-params.json'
 EDIT_HISTORY_EXTRACT_PARAMS = 'config/edit-history-extract-params.json'
 MEDIA_DATA_PARAMS  = 'config/media-data-params.json'
 MEDIA_PROCESS_PARAMS  = 'config/media-process-params.json'
-
-XD_PARAMS = 'config/xd-extract.json'
 
 def load_params(fp):
     with open(fp) as fh:
@@ -58,12 +57,6 @@ def main(targets):
     if 'edit-history-extract' in targets:
         cfg = load_params(EDIT_HISTORY_EXTRACT_PARAMS)
         extract_data(**cfg)
-
-    # extract covid articles from XD edit history data
-    if 'xd-extract' in targets:
-        cfg = load_params(XD_PARAMS)
-        extract_data(**cfg)
-
 
     # make the media data target
     if 'media-data' in targets:

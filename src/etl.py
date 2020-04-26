@@ -62,20 +62,33 @@ def context_to_pkl(context, out_spec_dir, tags, article_set):
 
     root = etree.Element("wikimedia")
 
+    fh = open(out_spec_dir + 'tracker.txt', 'a+')
+    found = False
+
     # loop through the large XML tree (streaming)
     for event, elem in context:
+        # print('checking')
         curr_title = get_tag_if_exists(elem, 'page_title')
+        # print(curr_title)
         if curr_title in article_set:
             # add the 'page' element to the small tree
             root.append(elem)
             pkl_tree(root=root, out_spec_dir=out_spec_dir, tags=tags,
                      page_title=curr_title)
+            print(curr_title)
+            fh.write(curr_title + '\n')
+            found = True
             root = etree.Element("wikimedia")
 
         # release unneeded XML from memory
         elem.clear()
         while elem.getprevious() is not None:
             del elem.getparent()[0]
+
+    if not found:
+        print('Found none of articles in the article set')
+        fh.write('None\n')
+    fh.close()
 
     del context
 
@@ -212,6 +225,9 @@ def unzip_to_pkl(data_dir, fp_unzip, tags, article_set, file_type):
                                   'xml/export-0.10/}page',
                               encoding='utf-8', huge_tree=True)
     print('Converting to pickle')
+    fh = open(out_spec_dir + 'tracker.txt', 'a+')
+    fh.write(fp_unzip + '\n')
+    fh.close()
     context_to_pkl(context=context, out_spec_dir=out_spec_dir, tags=tags,
                    article_set=article_set)
 
@@ -318,6 +334,25 @@ def get_pageview_articles(raw_dir, out_spec_dir, fp_zip, domain_set,
         if curr_domain in domain_set and curr_title in article_set:
             fh_unzip.write('{},{},{}\n'.format(curr_domain, curr_title,
                                                curr_views))
+
+
+def rreplace(s, old, new, occurrence):
+    new_s = s.rsplit(old, occurrence)
+    return new.join(new_s)
+
+
+def sub_extra_commas(fp):
+    lines = []
+    with open(fp) as fh:
+        for line in fh:
+            if line.count(',') > 2:
+                line = re.sub(r',', '|', line)
+                line = re.sub(r'\|', ',', line, count=1)
+                line = rreplace(line, '|', ',', 1)
+            lines.append(line)
+    with open(fp, 'w') as fh:
+        for line in lines:
+            fh.write(line)
 
 
 def remove_dir(dir_to_remove):
