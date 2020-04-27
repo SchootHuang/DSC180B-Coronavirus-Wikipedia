@@ -59,7 +59,6 @@ def context_to_pkl(context, out_spec_dir, tags, article_set):
     :param tags: Tags used for csv format
     :param article_set: Set of article titles
     """
-
     root = etree.Element("wikimedia")
 
     fh = open(out_spec_dir + 'tracker.txt', 'a+')
@@ -91,7 +90,6 @@ def context_to_pkl(context, out_spec_dir, tags, article_set):
     fh.close()
 
     del context
-
 
 def pkl_tree(root, out_spec_dir, tags, page_title):
     """
@@ -287,7 +285,8 @@ def scrape_files(base_url, scrape_file_desc, scrape_file_ext, raw_dir,
 
 
 def get_categorymembers(categorymembers, out_fh, article_set,
-                        level=0, max_level=1000):
+                        level=0, max_level=1000, store_graph=0,
+                        prev_cat=''):
     """
     Gets all the articles in a Wikipedia category
     :param categorymembers: Wikipedia category members
@@ -302,13 +301,17 @@ def get_categorymembers(categorymembers, out_fh, article_set,
         curr_title = c.title.replace(" ", "_")
         if curr_title not in article_set:
             article_set.add(curr_title)
+            if store_graph:
+                 out_fh.write("{},{},{}\n".format(curr_title, prev_cat, level))
             # Stores article title
-            if c.ns == wikipediaapi.Namespace.MAIN:
-                out_fh.write("%s\n" % curr_title)
+            elif c.ns == wikipediaapi.Namespace.MAIN:
+                out_fh.write("{}\n".format(curr_title))
             # Recursively gets the pages under a category
             if c.ns == wikipediaapi.Namespace.CATEGORY and level < max_level:
                 get_categorymembers(c.categorymembers, out_fh, article_set,
-                                    level=level + 1, max_level=max_level)
+                                    level=level + 1, max_level=max_level,
+                                    store_graph=store_graph,
+                                    prev_cat=curr_title)
 
 
 def get_pageview_articles(raw_dir, out_spec_dir, fp_zip, domain_set,
@@ -572,7 +575,8 @@ def extract_data(
 def get_wiki_category_articles(
         data_dir='data/',
         category='2019–20_coronavirus_pandemic',
-        language='en', max_level=1000
+        language='en', max_level=1000,
+        store_graph=0
 ):
     """
     Extracts a desired files from Wikipedia url
@@ -584,14 +588,19 @@ def get_wiki_category_articles(
 
     out_dir = '{}out/'.format(data_dir)
     out_fp = out_dir + category + '_articles.csv'
+    if store_graph:
+        out_fp = '_graph.'.join(out_fp.split('.'))
     wiki_wiki = wikipediaapi.Wikipedia(
         language=language,
         extract_format=wikipediaapi.ExtractFormat.WIKI
     )
     cat_page = wiki_wiki.page('Category:' + category)
     out_fh = open(out_fp, 'w+')
-    out_fh.write('Title\n')
+    if not store_graph:
+        out_fh.write('Title\n')
+    else:
+        out_fh.write('Title,Previous_Article,Level\n')
     article_set = set()
     get_categorymembers(categorymembers=cat_page.categorymembers,
                         out_fh=out_fh, article_set=article_set,
-                        level=0, max_level=max_level)
+                        level=0, max_level=max_level, store_graph=store_graph)
