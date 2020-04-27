@@ -298,11 +298,11 @@ def get_categorymembers(categorymembers, out_fh, article_set,
     """
     for c in categorymembers.values():
         # print("%s: %s (ns: %d)" % ("*" * (level + 1), c.title, c.ns))
-        curr_title = c.title.replace(" ", "_")
+        curr_title = c.title.replace(" ", "_").replace(',', '|')
         if curr_title not in article_set:
             article_set.add(curr_title)
             if store_graph:
-                 out_fh.write("{},{},{}\n".format(curr_title, prev_cat, level))
+                out_fh.write("{},{},{}\n".format(curr_title, prev_cat, level))
             # Stores article title
             elif c.ns == wikipediaapi.Namespace.MAIN:
                 out_fh.write("{}\n".format(curr_title))

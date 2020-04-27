@@ -6,8 +6,9 @@ import os
 
 sys.path.insert(0, 'src') # add library code to path
 from src.etl import get_data, extract_data, get_wiki_category_articles,\
-        remove_dir, sub_extra_commas
+        remove_dir
 from src.media_etl import get_media_data, process_media_data
+from src.sankey import create_sankey_figure
 
 EDIT_HISTORY_DATA_PARAMS = 'config/edit-history-data-params.json'
 PAGEVIEWS_DATA_PARAMS = 'config/pageviews-data-params.json'
@@ -15,8 +16,10 @@ COVID_ARTICLES_DATA_PARAMS = 'config/covid-article-data-params.json'
 COVID_ARTICLES_COMP_PARAMS = 'config/covid-article-complete-data-params.json'
 PAGEVIEWS_EXTRACT_PARAMS = 'config/pageviews-extract-params.json'
 EDIT_HISTORY_EXTRACT_PARAMS = 'config/edit-history-extract-params.json'
-MEDIA_DATA_PARAMS  = 'config/media-data-params.json'
-MEDIA_PROCESS_PARAMS  = 'config/media-process-params.json'
+MEDIA_DATA_PARAMS = 'config/media-data-params.json'
+MEDIA_PROCESS_PARAMS = 'config/media-process-params.json'
+SANKEY_PARAMS = 'config/sankey.json'
+
 
 def load_params(fp):
     with open(fp) as fh:
@@ -71,8 +74,13 @@ def main(targets):
 
     # cleans and prepares the media data for analysis
     if 'process-media' in targets:
-        cfg = load_params(PROCESS_MEDIA_PARAMS)
+        cfg = load_params(MEDIA_PROCESS_PARAMS)
         process_media_data(**cfg)
+
+    # create Sankey diagram from pageview data
+    if 'sankey' in targets:
+        cfg = load_params(SANKEY_PARAMS)
+        create_sankey_figure(**cfg)
 
     return
 
