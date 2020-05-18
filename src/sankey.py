@@ -1,12 +1,15 @@
 import pandas as pd
 import plotly.graph_objects as go
+import os
+import re
 
 
 class Article:
-    def __init__(self, title, parent=None):
+    def __init__(self, title, level, parent=None):
         self.title = title
         self.parent = parent
         self.children = {}
+        self.level = level
 
     def add_child(self, node):
         self.children[node.title] = node
@@ -20,6 +23,9 @@ class Article:
     def get_children(self):
         return self.children
 
+    def get_level(self):
+        return self.level
+
 
 def assign_node(row, root, node_map):
     """
@@ -30,18 +36,19 @@ def assign_node(row, root, node_map):
     :return:
     """
     if not row['Level']:
-        node = Article(row['Title'])
+        node = Article(title=row['Title'], level=row['Level'])
         root.add_child(node)
     else:
         prev_node = node_map[row['Previous_Article']]
-        node = Article(row['Title'], prev_node)
+        node = Article(title=row['Title'], level=row['Level'],
+                       parent=prev_node)
         prev_node.add_child(node)
     node_map[row['Title']] = node
     return
 
 
 def build_graph(covid_df):
-    root = Article(title='root')
+    root = Article(title='root', level=-1)
     node_map = {}
     covid_df.apply(assign_node, axis=1, args=(root, node_map))
     rev_index_map = covid_df['Title'].to_dict()
@@ -62,7 +69,8 @@ def sum_pageviews(root, pageviews_map, prev_list):
         sum_pageviews(child, pageviews_map, prev_list + [root])
 
 
-def sankey(root, node_map, index_map, rev_index_map, pageview_df, datetime):
+def sankey(root, node_map, index_map, rev_index_map, pageview_df, date,
+           max_lvl):
     """
     Adapted from https://medium.com/kenlok/e221c1b4d6b0
 
@@ -80,19 +88,20 @@ def sankey(root, node_map, index_map, rev_index_map, pageview_df, datetime):
 
     label_list = [rev_index_map[i] for i in range(len(rev_index_map))]
     source_list = [index_map[node_map[title].get_parent().get_title()]
-                   if node_map[title].get_parent()
+                   if node_map[title].get_parent() and pageviews_map[title]
                    else index_map[node_map[title].get_title()]
                    for title in label_list]
     target_list = [index_map[list(node_map[title].get_children()
-                                  .values())[0].get_title()]
+                                  .values())[-1].get_title()]
                    if node_map[title].get_children()
                    else index_map[node_map[title].get_title()]
                    for title in label_list]
-    value_list = [pageviews_map[title] for title in label_list]
+    value_list = [pageviews_map[title]
+                  if node_map[title].get_level() <= max_lvl
+                  else 0
+                  for title in label_list]
 
-    date, time = datetime.split('-')
     year, month, day = date[:4], date[4:6], date[6:]
-    hour = time[:2]
 
 
     # creating the sankey diagram
@@ -109,30 +118,47 @@ def sankey(root, node_map, index_map, rev_index_map, pageview_df, datetime):
         link = dict(
           source=source_list,
           target=target_list,
-          value=value_list
+          value=value_list,
+          label=label_list
         )
       )
 
     layout =  dict(
-        title='Pageview-{}-{}-{}@{}'.format(year, month, day, hour),
-        font=dict(
-          size=10
-        )
+        title='Pageview-{}-{}-{}'.format(year, month, day)
     )
 
     fig = dict(data=[data], layout=layout)
     return fig
 
 
-def create_sankey_figure(data_dir, pageview_fp, covid_fp, save_fp=None):
+def create_sankey_figure(data_dir, covid_fp, max_lvl=1, pageview_date=None,
+                         pageview_fp=None):
+    if pageview_date and\
+            not re.compile('\d{4}-\d{2}-\d{2}').match(pageview_date):
+        print('Pageview date should be in the format YYYY-MM-DD')
+        return
     covid_df = pd.read_csv(data_dir + 'out/' + covid_fp)
-    pageview_df = pd.read_csv(data_dir + 'out/pageview/' + pageview_fp,
-                              index_col='Title')
+    covid_df = covid_df[~covid_df['Title'].str.contains('emplate')]
+    covid_df = covid_df[~covid_df['Previous_Article'].fillna('')
+                        .str.contains('emplate')].reset_index()
+    if pageview_date:
+        date = pageview_date.replace('-', '')
+        pageview_df = pd.DataFrame()
+        for pageview_fp in os.listdir(data_dir + 'out/pageview/'):
+            if date in pageview_fp:
+                curr_pageview_df = pd.read_csv(data_dir + 'out/pageview/' +
+                                               pageview_fp,
+                                               index_col='Title')\
+                    .groupby('Title').sum()
+                pageview_df = (curr_pageview_df + pageview_df)\
+                    .fillna(curr_pageview_df).fillna(pageview_df)
+    else:
+        pageview_df = pd.read_csv(data_dir + 'out/pageview/' + pageview_fp,
+                                  index_col='Title').groupby('Title').sum()
+        pageview_df = pageview_df[pageview_df.index.isin(set(covid_df.Title))]
+        date = pageview_fp.split('-')[1]
     root, node_map, index_map, rev_index_map = build_graph(covid_df)
-    datetime = pageview_fp.split('pageviews-')[-1][:-4]
     fig = sankey(root, node_map, index_map, rev_index_map, pageview_df,
-                 datetime)
+                 date, max_lvl=max_lvl)
     fig = go.Figure(**fig)
-    if save_fp:
-        fig.write_image(data_dir + 'out/pageview/' + save_fp)
     return fig

@@ -12,6 +12,7 @@ import requests
 import subprocess
 from datetime import date
 import re
+import json
 
 # Paths are as follows
 # i.e. Page: page_id, page_title
@@ -337,6 +338,133 @@ def get_pageview_articles(raw_dir, out_spec_dir, fp_zip, domain_set,
         if curr_domain in domain_set and curr_title in article_set:
             fh_unzip.write('{},{},{}\n'.format(curr_domain, curr_title,
                                                curr_views))
+
+
+def scrape_edit_history(titles=('COVID-19_pandemic_in_Puducherry',)):
+    base_url = 'https://en.wikipedia.org/w/api.php?'
+    headers = {
+        'User-Agent': 'MediaWiki REST API docs examples/0.1' +
+                      '(https://meta.wikimedia.org/wiki/User:APaskulin_(WMF))'}
+    query_lst = ('action', 'prop', 'titles', 'rvlimit', 'rvprop', 'format',
+                 'rvcontinue', 'maxlag')
+    query_dct = {'action': 'query',
+                 'prop': 'revisions',
+                 'rvlimit': '500',
+                 'rvprop': 'ids|timestamp|content',
+                 'format': 'json',
+                 'maxlag': '5'}
+    if len(titles) == 1:
+        query_dct['rvlimit'] = 'max'
+    response_dct = {}
+
+    for title in titles:
+        complete, prev_comp = False, None
+        query_dct['titles'] = title
+        response_dct[title] = []
+        while not complete:
+            if prev_comp:
+                query_dct['rvcontinue'] = prev_comp
+            url = base_url + '&'.join(key + '=' + query_dct[key]
+                                      for key in query_lst
+                                      if key in query_dct)
+            response = requests.get(url, headers=headers)
+            response = json.loads(response.text)
+            article_id = list(response['query']['pages'].keys())[0]
+            response_dct[title].extend(
+                response['query']['pages'][article_id]['revisions'])
+            if 'batchcomplete' in response:
+                complete = True
+            else:
+                prev_comp = response['continue']['rvcontinue']
+
+    return response_dct
+
+
+def clean_content(content):
+    braces, brace_pairs = [], []
+    brackets, bracket_pairs = [], []
+    beg_bracket = None
+
+    # Find all braces (nested or not) and brackets
+    for i in range(1, len(content)):
+        if content[i - 1] == '{' and (content[i] == '{' or content[i] == '|'):
+            braces.append(i - 1)
+        elif (content[i - 1] == '}' or content[i - 1] == '|') and content[
+            i] == '}':
+            beg_brace = braces.pop()
+            if not braces:
+                brace_pairs.append((beg_brace, i))
+        elif content[i - 1] == '[' and content[i] == '[' and not braces:
+            beg_bracket = i - 1
+        elif content[i - 1] == ']' and content[i] == ']':
+            end_bracket = i
+            if beg_bracket:
+                bracket_pairs.append((beg_bracket, end_bracket))
+                beg_bracket = None
+
+    i = len(brace_pairs)
+    j = len(bracket_pairs)
+    # Removes braces and bracket pairs
+    while i and j:
+        brace_pair = brace_pairs[i - 1]
+        bracket_pair = bracket_pairs[j - 1]
+        if brace_pair[-1] > bracket_pair[-1]:
+            while bracket_pair[0] > brace_pair[0]:
+                j -= 1
+                if not j:
+                    break
+                bracket_pair = bracket_pairs[j - 1]
+            content = content[:brace_pair[0]] + content[brace_pair[1] + 1:]
+            i -= 1
+        else:
+            # Context in brackets are links to other articles
+            # The brackets can be removed usually, as the article titles work
+            # there plainly
+            # In the case that the brackets have a '|' divider, then the
+            # article title is just the text after the divider
+            actual_name = content[bracket_pair[0] + 2:bracket_pair[1] - 1]
+            if '|' in actual_name:
+                actual_name = actual_name.split('|')[-1]
+            content = content[:bracket_pair[0]] + actual_name + content[
+                                                                bracket_pair[
+                                                                    1] + 1:]
+            j -= 1
+
+    # Removes the remaining braces and brackets
+    while i:
+        brace_pair = brace_pairs[i - 1]
+        content = content[:brace_pair[0]] + content[brace_pair[1] + 1:]
+        i -= 1
+    while j:
+        bracket_pair = bracket_pairs[j - 1]
+        content = content[:bracket_pair[0]] + content[bracket_pair[1] + 1:]
+        j -= 1
+
+    # Removes remaining brackets
+    for i in range(1, len(content) - 1)[::-1]:
+        if content[i - 1] == ']' and content[i] == ']':
+            end_bracket = i
+        elif content[i - 1] == '[' and content[i] == '[':
+            beg_bracket = i - 1
+            content = content[:beg_bracket] + content[end_bracket + 1:]
+
+    # Removes HTML tags
+    pattern = re.compile(r'<.*?>')
+    content = pattern.sub('', content)
+
+    # Removes urls
+    pattern = re.compile(r'\[https?:\/\/[^\]]*\]')
+    content = pattern.sub('', content)
+
+    # Removes titles
+    pattern = re.compile(r'==+[^=]*==+')
+    content = pattern.sub('', content)
+
+    # Removes whitespace
+    pattern = re.compile(r'\s+')
+    content = pattern.sub(' ', content)
+
+    return content.strip()
 
 
 def rreplace(s, old, new, occurrence):
