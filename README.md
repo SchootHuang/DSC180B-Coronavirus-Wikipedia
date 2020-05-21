@@ -9,21 +9,21 @@ Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://j
 Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
 
 ### COVID-19 News Articles Dataset
-[Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/%23_COVID_NEWS.png)
+![Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/%23_COVID_NEWS.png)
 
 ###  Wikipedia Page Views Dataset
-[Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/COVID19-page-view.png)
+![Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/COVID19-page-view.png)
 
 ###  Wikipedia Editing History Dataset
 
 ### Results
-[Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/COVID19-topic-distribution.png)
+![Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/COVID19-topic-distribution.png)
 
-[Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/Topic11.png)
-[Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/Topic17.png)
+![Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/Topic11.png)
+![Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/Topic17.png)
 
-[Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/New-York-Times.png)
-[Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/WashingtonPost.png)
+![Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/New-York-Times.png)
+![Image](https://github.com/SchootHuang/DSC180B-Coronavirus-Wikipedia/blob/master/website-figures/WashingtonPost.png)
 
 ```markdown
 Syntax highlighted code block
