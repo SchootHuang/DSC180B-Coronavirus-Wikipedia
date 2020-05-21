@@ -9,7 +9,7 @@ Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://j
 Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
 
 ### COVID-19 News Articles Dataset
-![Image](/website-figures/%23_COVID_NEWS.png)
+![Image](/website-figures/#_COVID_NEWS.png)
 
 ###  Wikipedia Page Views Dataset
 ![Image](/website-figures/COVID19-page-view.png)
