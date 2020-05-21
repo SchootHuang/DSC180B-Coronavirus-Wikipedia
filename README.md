@@ -9,6 +9,7 @@ There are three main datasets for our study.
 Since we focused specifically on COVID-19, we restricted the temporal scope of the data to news since the beginning of the year 2020, which resulted in 230,000+ news coverage. And we generated our own COVID-19 News Dataset by filtering out the COVID-19 related articles. We applied filtering keywords such as ‘COVID’, ‘virus’, ‘stay-at-home’ on the headlines of each article. This resulted in a final dataset with approximately 45,000+ articles.
 
 Currently, there are 20 publication sources in our COVID-19 news articles dataset:
+ 
  [1] "Business Insider"   "Buzzfeed News"      "CNBC"               "CNN"               
  [5] "Economist"          "Hyperallergic"      "Mashable"           "New Republic"      
  [9] "Politico"           "Refinery 29"        "Reuters"            "TechCrunch"        
