@@ -31,8 +31,7 @@ We are currently in the process of collecting all the edit histories for all the
 # Results
 In our experiments, we run STM on the combination of both wikipedia editing history as well as the news article dataset. We first plot the overall topic distribution(Shown below) of the combined corpus and make case studies for more fine-grained analysis. Then compare the topic distribution of each source to the overall topic distribution of the combined corpus.
 
-![Image](/website-figures/STMplot.png)
-![Image](/website-figures/COVID19-topic-distribution.png)
+![Image](/website-figures/TopicModelResult.png)
 
 Here we define {T} as the set of topic distribution for a given corpus C, and  Ti is the topic distribution with topic i, which is defined by the number of documents that have the dominant topic i per day. This concept would work smoothly with our COVID-19 News article dataset. For the wikipedia part, we would take the number of page views as the analogue of the number of articles for our investigation. From our perspective, the topic distribution of each source is a simple yet efficient approach in investigating the variation of content.
 
