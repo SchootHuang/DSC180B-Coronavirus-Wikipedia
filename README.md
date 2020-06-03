@@ -16,17 +16,21 @@ Currently, there are 20 publication sources in our COVID-19 news articles datase
 [13] "The Hill"           "The New York Times" "The Verge"          "TMZ"               
 [17] "Vice"               "Vox"                "Washington Post"    "Wired"   
 
-The bar plot below shows the number of articles per day, which suggests that the attention shed on COVID-19 was accelerating since March. Also, the data shows a periodic pattern since newspapers publish less articles during the weekend. There is a decreasing trend after March 21, but this is more likely because more up to date news were parsed from the Internet and were therefore not included in the dataset.
+The bar plot on the left shows the number of articles per news outlet. We see that the dataset is extremely biase with the Reuters has more articles than the rest combined. Here we adapt sampling strategies to maintain fairness in the comparison below.
+
+The bar plot on the right shows the number of articles per day, which suggests that the attention shed on COVID-19 was accelerating since March. Also, the data shows a periodic pattern since newspapers publish less articles during the weekend. There is a decreasing trend after March 21, but this is more likely because more up to date news were parsed from the Internet and were therefore not included in the dataset.
 
 ![Image](/website-figures/NewsArticleDataset.png)
 
 ##  Wikipedia Page Views Dataset
 The data ingestion of the Wikipedia articles lead to the creation of thousands of csv files with the article title and pageviews for each of the articles as well as the domain code which is the language the article is written in. We narrowed down the scope of these articles by selecting the rows with titles that contain specific key words such as “covid”, “coronavirus”, “pandemic” etc. Using this much smaller subset of the data, we created bar charts to visualize the articles with the highest and lowest page views. We also created a histogram showing the distribution of the pages views for all the articles in the dataset.
 
+Here we show that the Top3 pageviews by langueges are: Russian, English and Chinese. And the page view serges in mid-March.
+
 ![Image](/website-figures/WikipediaDataset.png)
 
 ##  Wikipedia Editing History Dataset
-We are currently in the process of collecting all the edit histories for all the articles in the page views dataset. One we have the edit histories, we will perform the same topic modelling we performed on the News Articles Dataset by running the same script. This will allow us to produce sankey diagrams to visually represent the edit history of these Wikipedia articles. This will also allow us to compare the Wikipedia and the Media sources and evaluate the less biased source as well as draw key conclusions from our investigation.
+This dataset is the editing history of COVID-19 related pages, for example, the COVID-19 pandemic article as well as COVID-19 per country articles.
 
 # Results
 In our experiments, we run STM on the combination of both wikipedia editing history as well as the news article dataset. We first plot the overall topic distribution(Shown below) of the combined corpus and make case studies for more fine-grained analysis. Then compare the topic distribution of each source to the overall topic distribution of the combined corpus.
@@ -46,10 +50,12 @@ We then investigate each topic to see whether the given topic correctly reflects
 ##  Topic Distribution of Specific Information Outlet
 ![Image](/website-figures/PlotBySource.png)
 
-The two plots above are the topic distribution corresponding to  New York Times and Washington Post. Respectively. As one may observe, the Reuters is with the topic distribution that is the most similar to the combined corpus, whereas the topic distribution from New York TImes is more evenly distributed. This might be due to the overall corpus being made up of a large amount of Reuter’s coverage. In the final report, we will address this issue through random sampling strategies.
+The four plots above are the topic distribution corresponding to CNN, Washingyon Post, The Reuters and Wikipedia respectively. As one may observe, the Reuters and CNN is with the topic distribution that is the most similar to the combined corpus where each topic is evenly distributed, whereas for Wikipeida and Washington Post are more likely to have a dominant topic for a given period of time.
 
-## Trustworthiness Measurement
+## Biaseness Measurement
 ![Image](/website-figures/NormFunction.png)
 ![Image](/website-figures/TrustWorthinessResult.png)
+Here we define Biaseness as whether the topic distribution deviated from the ground truth, where the ground truth is the combined corpus of Wikipedia and media. Here we use two set of biaseness metric, the Wassertstein Distance and Frobenius Norm. In both settings, CNN is the most unbiased news outlet whereas the Wikipedia ranked the last.
 
 # Conclusion
+In conclusion, we found out that Traditional media is the least biased, the online media comes second and Wikipedia comes the last in the scope of wikipedia, althought the rank may vary from situation to situation. In the future, we will expand the temporal scope to include more articles for better analysis.
