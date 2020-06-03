@@ -49,6 +49,7 @@ We then investigate each topic to see whether the given topic correctly reflects
 The two plots above are the topic distribution corresponding to  New York Times and Washington Post. Respectively. As one may observe, the Reuters is with the topic distribution that is the most similar to the combined corpus, whereas the topic distribution from New York TImes is more evenly distributed. This might be due to the overall corpus being made up of a large amount of Reuter’s coverage. In the final report, we will address this issue through random sampling strategies.
 
 ## Trustworthiness Measurement
+![Image](/website-figures/NormFunction.png)
 ![Image](/website-figures/TrustWorthinessResult.png)
 
 # Conclusion
