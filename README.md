@@ -18,7 +18,7 @@ Currently, there are 20 publication sources in our COVID-19 news articles datase
 
 The bar plot below shows the number of articles per day, which suggests that the attention shed on COVID-19 was accelerating since March. Also, the data shows a periodic pattern since newspapers publish less articles during the weekend. There is a decreasing trend after March 21, but this is more likely because more up to date news were parsed from the Internet and were therefore not included in the dataset.
 
-![Image](/website-figures/NewsArticleDatatset.png)
+![Image](/website-figures/NewsArticleDataset.png)
 
 ##  Wikipedia Page Views Dataset
 The data ingestion of the Wikipedia articles lead to the creation of thousands of csv files with the article title and pageviews for each of the articles as well as the domain code which is the language the article is written in. We narrowed down the scope of these articles by selecting the rows with titles that contain specific key words such as “covid”, “coronavirus”, “pandemic” etc. Using this much smaller subset of the data, we created bar charts to visualize the articles with the highest and lowest page views. We also created a histogram showing the distribution of the pages views for all the articles in the dataset.
