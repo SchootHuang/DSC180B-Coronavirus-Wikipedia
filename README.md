@@ -44,7 +44,7 @@ Here we define {T} as the set of topic distribution for a given corpus C, and  T
  ![Image](/website-figures/EventAnalysis.png)   
 
 
-We then investigate each topic to see whether the given topic correctly reflects the ground truth regarding to COVID-19. Firstly, topic 11, given keywords of 'china','wuhan','outbreak','virus','case', highlighted in purple in Figure b, indeed correlate with the breakout of COVID-19 in China, as it surges on Jan 2020 and then decreases as the virus were gradually taken into control in China. Topic 17 on other hand, given keywords of 'market','stock','index','investor','dollar', highlighted in orange in Figure b, correlates with the attention on global economy as people are concerning on the virus’s effect on the economy and the resulting Market slip.
+We then investigate each topic to see whether the given topic correctly reflects the ground truth regarding to COVID-19. Firstly, topic 13, given keywords of 'china','wuhan','outbreak', highlighted in orange, indeed correlate with the breakout of COVID-19 in China, as it surges on Jan 2020 and then decreases as the virus were gradually taken into control in China. Topic 21 on other hand, given keywords of 'market','stock','index','investor','dollar', highlighted in dark purple, correlates with the attention on global economy as people are concerning on the virus’s effect on the economy and the resulting Market slip.
 
 
 ##  Topic Distribution of Specific Information Outlet
