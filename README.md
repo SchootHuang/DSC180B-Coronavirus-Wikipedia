@@ -38,18 +38,18 @@ Here we define {T} as the set of topic distribution for a given corpus C, and  T
 
 
 ##  Topic Distribution of Specific Topics
- ![Image](/website-figures/Topic11.png)  
- ![Image](/website-figures/Topic17.png) 
+ ![Image](/website-figures/EventAnalysis.png)   
 
 
 We then investigate each topic to see whether the given topic correctly reflects the ground truth regarding to COVID-19. Firstly, topic 11, given keywords of 'china','wuhan','outbreak','virus','case', highlighted in purple in Figure b, indeed correlate with the breakout of COVID-19 in China, as it surges on Jan 2020 and then decreases as the virus were gradually taken into control in China. Topic 17 on other hand, given keywords of 'market','stock','index','investor','dollar', highlighted in orange in Figure b, correlates with the attention on global economy as people are concerning on the virus’s effect on the economy and the resulting Market slip.
 
 
 ##  Topic Distribution of Specific Information Outlet
-![Image](/website-figures/New-York-Times.png)
-![Image](/website-figures/WashingtonPost.png)
+![Image](/website-figures/PlotBySource.png)
 
 The two plots above are the topic distribution corresponding to  New York Times and Washington Post. Respectively. As one may observe, the Reuters is with the topic distribution that is the most similar to the combined corpus, whereas the topic distribution from New York TImes is more evenly distributed. This might be due to the overall corpus being made up of a large amount of Reuter’s coverage. In the final report, we will address this issue through random sampling strategies.
 
 ## Trustworthiness Measurement
 ![Image](/website-figures/TrustWorthinessResult.png)
+
+# Conclusion
