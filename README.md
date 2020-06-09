@@ -9,7 +9,7 @@ COVID-19 has gained increasing attention since its breakout in China in the earl
 
 Our project was implemented with a combination of python and R. We use python for data ingesting, cleaning, and transformation. We use R for running the STM model since the package is R-exclusive. And finally, Python for final measurements and visualization.
 
-1. The data ingestion pipeline could be run by:
+The project pipeline could be run by:
 ```
 launch-scipy-ml.sh
 git clone git@github.com:SchootHuang/DSC180B-Coronavirus-Wikipedia.git
@@ -17,12 +17,15 @@ cd DSC180B
 python run.py #USER-SPECIFIED-TARGET#
 ```
 
-2. Once cleaned, please refer to STM.R for topic modeling in R.
+For demoing purpuse:
+1. Please refer to EDA_news.ipynb for the EDA process of news dataset
 
-3. Finally, refer to the visualization.ipynb notebook for visualization.
+2. please refer to 2020-COVID.R for topic modeling in R.
+
+3. Finally, refer to the visualization.ipynb notebook for visualization, and Biaseness_measurement.ipynb for the biaseness evaluation with Wasserstain distance and Forbenius Norm distance.
 
 
-## Sources
+## Resources
 
 Link to our Project Website: https://schoothuang.github.io/DSC180B-Coronavirus-Wikipedia/ 
 
